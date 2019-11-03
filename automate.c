@@ -4,7 +4,10 @@
 #include <ctype.h>
 
 int state = 0, start = 0 ;
-int lexical_value ;
+char c;
+char lexeme[10];
+FILE* sourceFile;
+FILE* outputFile;
 
 
 typedef enum TOKEN
@@ -18,54 +21,87 @@ typedef enum TOKEN
     ERROR
 } TOKEN;
 
-void retract(int tokenType)
+
+void flushBuffer()
 {
-    //  Writes the token in the output file
-    //  +
-    //  Resets the state to 0
+    for(int i=0; i<10; lexeme[i++] = 0);
 }
-void installId(char* lexeme)
+
+
+int nextchar()
 {
-    char* reservedKeywords = ["SI",
+    int ch = fgetc(sourceFile);
+    if(ch != EOF)
+        return ch;
+    else
+        exit(0);
+}
+
+
+void accept(int tokenType)
+{
+    switch(tokenType)
+    {
+    case 2:
+        fprintf(outputFile," LT");
+        break;
+    case 3:
+        fprintf(outputFile," LE");
+        break;
+    case 4:
+        fprintf(outputFile," NE");
+        break;
+    case 6:
+        fprintf(outputFile," GT");
+        break;
+    case 7:
+        fprintf(outputFile," GE");
+        break;
+    case 9:
+        fprintf(outputFile," AFFECT");
+        break;
+    case 10:
+        fprintf(outputFile," EQ");
+        break;
+    case 13:
+        fprintf(outputFile," ID");
+        break;
+    case 19:
+        fprintf(outputFile," EXPONENTFLOAT");
+        break;
+    case 24:
+        fprintf(outputFile," FLOAT");
+        break;
+    }
+}
+
+
+int installId(char* lexeme)
+{
+    char* reservedKeywords = {"SI",
                               "SINON",
                               "ALORS",
                               "OPREL",
                               "ID",
                               "NB",
-                              "ERROR"];
+                              "ERROR"
+                             };
 
     for(int i=0; i<7; i++)
     {
         if(strcmp(lexeme, reservedKeywords[i]) == 0)
+        {
+            fprintf(outputFile," %s","expression");
             return 0;
+        }
     }
 
-    return 1;
-}
-
-void getToken(char* lexeme)
-{
-    char* reservedKeywords = ["SI",
-                              "SINON",
-                              "ALORS",
-                              "OPREL",
-                              "ID",
-                              "NB",
-                              "ERROR"];
-
-    for(int i=0; i<7; i++)
-    {
-        if(strcmp(lexeme, reservedKeywords[i]) == 0)
-            return TOKEN[i]; /// CAN WE DO THIS ??
-    }
-
-    return ID;
+    accept(13);
 }
 
 
 int fail()
 {
-    forward = token_debut ;
     switch(start)
     {
     //  OPREL || Affectation
@@ -81,15 +117,25 @@ int fail()
         start = 22 ;
         break ;
     case 22 :
-        recover() ;
+        if(c != EOF)
+        {
+            fclose(outputFile);
+            fclose(sourceFile);
+            exit(0);
+        }
+        else
+        {
+            printf("Error at reading : %c", c);
+        }
         break ;
-    default : /* erreur */
     }
-    return start ;
+    return start;
 }
 
-TOKEN nexttoken()
+void startParsing()
 {
+    int count;
+
     while (1)
     {
         switch(state)
@@ -99,7 +145,6 @@ TOKEN nexttoken()
             if (c==' '||c=='\t'||c=='\n')
             {
                 state = 0 ;
-                //debut ++ ;
             }
             else if (c == '<')
                 state = 1 ;
@@ -109,34 +154,33 @@ TOKEN nexttoken()
                 state = 8 ;
             else
                 state = fail() ;
-            break ;
         case 1:
             c = nextchar();
             if(c == '=')
-                retract(3);
+                accept(3);
             else if(c == '>')
-                retract(4);
+                accept(4);
             else
-                retract(2);
+                accept(2);
             break;
         case 5:
             c = nextchar();
             if(c == '=')
-                retract(7);
+                accept(7);
             else
-                retract(6);
+                accept(6);
             break;
-
         case 8:
             c = nextchar();
             if(c == '=')
-                retract(10);
+                accept(10);
             else
-                retract(9);
+                accept(9);
             break;
 
         case 11 :
-            c = nextchar() ;
+            flushBuffer();
+            lexeme[0]=c;
             if (isalpha(c)||c=='_')
                 state = 12 ;
             else
@@ -144,36 +188,43 @@ TOKEN nexttoken()
             break ;
 
         case 12 :
-            c = nextchar() ;
-            if (isalnum(c)||c=='_')
-                state = 12 ;
-            else
-                state = 13 ;
-            break ;
+            while(c = nextchar())
+            {
+                if (isalnum(c)||c=='_')
+                {
+                    state = 12 ;
+                    lexeme[count++] = c;
+                }
+                else
+                {
+                    state = 13 ;
+                    break;
+                }
+            }
         case 13 :
-            retract(13) ;
-            installId() ;
-            return(gettoken()) ;    /// Check this out
+            installId(lexeme);
         case 14:
-            c = nextchar();
             if(isdigit(c))
+            {
                 state = 15;
+            }
             else if(c == '.')
                 state = 20;
             else
-                fail();
-            break;
+                state = fail();
         case 15:
             while(c = nextchar())
             {
-                if(!isdigit(c)) break;
+                if(isdigit(c) == 0)
+                    break;
             }
+            printf("After\n");
             if(c == 'e' || c == 'E')
                 state = 16;
             else if (c == '.')
                 state = 21;
             else
-                fail();
+                state = fail();
             break;
         case 16:
             c = nextchar();
@@ -182,20 +233,22 @@ TOKEN nexttoken()
             else if(isdigit(c))
                 state = 18;
             else
-                fail();
+                state = fail();
             break;
         case 17:
             c = nextchar();
             if(isdigit(c))
                 state = 18;
             else
-                fail();
+                state = fail();
             break;
-        case 18;
-            while(c = nextchar()) if(!isdigit()) break;
+        case 18:
+            while(c = nextchar())
+                if(!isdigit(c))
+                    break;
             state = 19;
         case 19:
-            retract(19);
+            accept(19);
             break;
         case 22:
             c = nextchar();
@@ -205,27 +258,41 @@ TOKEN nexttoken()
             else if(c =='.')
                 state = 25;
             else
-                fail();
-            break;
+                state = fail();
         case 23:
-            while(c = nextchar()) if(!isdigit()) break;
+            while(c = nextchar())
+                if(!isdigit(c))
+                    break;
             if(c == '.')
                 state = 26;
             else
                 state = 24;
         case 24:
-            retract(24);
+            accept(24);
             break;
         case 25:
             if(isdigit(c))
                 state = 26;
             else
-                fail();
-            break;
+                state = fail();
         case 26:
-            while(c = nextchar()) if(!isdigit()) break;
+            while(c = nextchar())
+                if(isdigit(c) == 0)
+                    break;
             state = 24;
-            break;
         }
     }
+}
+
+
+int main()
+{
+    sourceFile = fopen("sourceCode","r");
+    outputFile = fopen("outputFile","w");
+
+
+    startParsing();
+    //accept(6);
+    //fclose(sourceFile);
+    //fclose(outputFile);
 }
