@@ -47,6 +47,7 @@ int nextchar()
 void accept(int tokenType)
 {
     state = 0;
+    start = 0;
     switch(tokenType)
     {
     case 2:
@@ -102,16 +103,20 @@ int installId(char* lexeme)
         if(strcmp(lexeme, reservedKeywords[i]) == 0)
         {
             state = 0;
+            start = 0;
             fprintf(outputFile," %s", reservedKeywords[i]);
             return 0;
         }
     }
     accept(13);
+    start = 0;
+    return 0;
 }
 
 
 int fail()
 {
+    printf("state : %d\n", state);
     switch(start)
     {
     //  OPREL || Affectation
@@ -138,7 +143,7 @@ int fail()
         }
         else
         {
-            printf("Error at reading : %c", c);
+            printf("Error at reading : %c\n", c);
         }
         break ;
     }
@@ -220,6 +225,7 @@ void startParsing()
             }
         case 13 :
             installId(lexeme);
+            break;
         case 14:
             if(isdigit(c))
             {
@@ -235,7 +241,9 @@ void startParsing()
                 if(isdigit(c) == 0)
                     break;
             }
+
             printf("After\n");
+
             if(c == 'e' || c == 'E')
                 state = 16;
             else if (c == '.')
@@ -261,13 +269,20 @@ void startParsing()
             break;
         case 18:
             while(c = nextchar())
+            {
                 if(!isdigit(c))
                     break;
+            }
+
             state = 19;
+            break;
         case 19:
+            //  exponentFloat
+            puts("got to 19");
             accept(19);
             break;
         case 22:
+
             c = nextchar();
 
             if(isdigit(c))

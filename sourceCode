@@ -1,1 +1,1 @@
-<= < <> > >= = == _OPREL 
+SI A <= 13e-8 ALORS B = 18e-8 SINON C = 8e+8 
