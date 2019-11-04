@@ -34,12 +34,18 @@ int nextchar()
     if(ch != EOF)
         return ch;
     else
+    {
+        fclose(sourceFile);
+        fclose(outputFile);
         exit(0);
+    }
+
 }
 
 
 void accept(int tokenType)
 {
+    state = 0;
     switch(tokenType)
     {
     case 2:
@@ -71,6 +77,9 @@ void accept(int tokenType)
         break;
     case 24:
         fprintf(outputFile," FLOAT");
+        break;
+    default:
+        fprintf(outputFile," NOT FOUND");
         break;
     }
 }
@@ -117,7 +126,7 @@ int fail()
         start = 22 ;
         break ;
     case 22 :
-        if(c != EOF)
+        if(feof(sourceFile))
         {
             fclose(outputFile);
             fclose(sourceFile);
@@ -138,14 +147,13 @@ void startParsing()
 
     while (1)
     {
+
         switch(state)
         {
         case 0 :
             c = nextchar();
             if (c==' '||c=='\t'||c=='\n')
-            {
                 state = 0 ;
-            }
             else if (c == '<')
                 state = 1 ;
             else if (c == '>')
@@ -154,6 +162,7 @@ void startParsing()
                 state = 8 ;
             else
                 state = fail() ;
+            break;
         case 1:
             c = nextchar();
             if(c == '=')
@@ -161,7 +170,11 @@ void startParsing()
             else if(c == '>')
                 accept(4);
             else
+            {
                 accept(2);
+                ungetc(c,sourceFile);
+            }
+
             break;
         case 5:
             c = nextchar();
