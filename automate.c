@@ -3,7 +3,7 @@
 #include <string.h>
 #include <ctype.h>
 
-int state = 0, start = 0 ;
+int state = 0, start = 0 , count = 0;
 char c;
 char lexeme[10];
 FILE* sourceFile;
@@ -24,6 +24,7 @@ typedef enum TOKEN
 
 void flushBuffer()
 {
+    count = 1;
     for(int i=0; i<10; lexeme[i++] = 0);
 }
 
@@ -87,7 +88,7 @@ void accept(int tokenType)
 
 int installId(char* lexeme)
 {
-    char* reservedKeywords = {"SI",
+    char* reservedKeywords[7] = {"SI",
                               "SINON",
                               "ALORS",
                               "OPREL",
@@ -95,16 +96,16 @@ int installId(char* lexeme)
                               "NB",
                               "ERROR"
                              };
-
     for(int i=0; i<7; i++)
     {
+
         if(strcmp(lexeme, reservedKeywords[i]) == 0)
         {
-            fprintf(outputFile," %s","expression");
+            state = 0;
+            fprintf(outputFile," %s", reservedKeywords[i]);
             return 0;
         }
     }
-
     accept(13);
 }
 
@@ -115,14 +116,17 @@ int fail()
     {
     //  OPREL || Affectation
     case 0 :
+        puts("jump to 11");
         start = 11 ;
         break ;
     //  Identificateurs
     case 11 :
+        puts("jump to 14");
         start = 14 ;
         break ;
     //  Nombres
     case 14 :
+        puts("jump to 22");
         start = 22 ;
         break ;
     case 22 :
@@ -143,8 +147,6 @@ int fail()
 
 void startParsing()
 {
-    int count;
-
     while (1)
     {
 
@@ -195,7 +197,9 @@ void startParsing()
             flushBuffer();
             lexeme[0]=c;
             if (isalpha(c)||c=='_')
-                state = 12 ;
+            {
+                state = 12;
+            }
             else
                 state = fail() ;
             break ;
